@@ -70,6 +70,11 @@ def run_grid(runs: list[RunConfig], out: Path, parallel: int = 4, progress: bool
 
     if any(r.runtime.startswith("langgraph") for r in runs):
         langgraph_rt.setup()
+    if any(r.key_strategy == "intent_log" for r in runs):
+        from .agent import INTENT_DB
+        from .intentlog import IntentLog
+
+        IntentLog(INTENT_DB).setup()
     control = Control()
     url = control.serve()
     runs = [replace(r, port=BASE_PORT + i) if r.runtime == "restate" else r for i, r in enumerate(runs)]

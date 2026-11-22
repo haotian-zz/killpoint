@@ -1,6 +1,6 @@
 # `get_state().next` is empty for a killed, unfinished thread
 
-Draft of an upstream report. Not filed, not confirmed by a maintainer.
+This is a draft of an upstream report. It has not been filed or confirmed by a maintainer.
 
 ## Versions
 

@@ -35,7 +35,9 @@ LLM_MODES = ("deterministic", "nondeterministic")
 #   args_hash : hash of the tool name and arguments
 #   position  : run id + turn + call index, known before the model is asked
 #   native    : an identifier the runtime itself gives the step
-KEY_STRATEGIES = ("none", "args_hash", "position", "native")
+#   intent_log: a write-ahead intent log (intentlog.py) pins the key and the
+#               arguments of the first attempt
+KEY_STRATEGIES = ("none", "args_hash", "position", "native", "intent_log")
 
 CRASH_KINDS = ("llm_before", "llm_after", "tool_before", "tool_after")
 

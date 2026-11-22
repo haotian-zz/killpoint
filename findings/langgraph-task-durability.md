@@ -1,6 +1,6 @@
 # A finished `@task` runs again if the process dies right after it returns
 
-Draft of an upstream report. Not filed, not confirmed by a maintainer.
+This is a draft of an upstream report. It has not been filed or confirmed by a maintainer.
 
 ## Versions
 

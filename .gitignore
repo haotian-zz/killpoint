@@ -6,3 +6,4 @@ results/*.log
 .pytest_cache/
 scratch/
 results/full_*
+results/final_*

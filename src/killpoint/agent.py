@@ -64,14 +64,29 @@ def llm_step(cfg: RunConfig, turn: int) -> list[dict]:
     return calls
 
 
+INTENT_DB = "postgresql://postgres:killpoint@127.0.0.1:54329/killpoint_intents"
+
+
+def _send(cfg: RunConfig, turn: int, call: int, args: dict, key: str | None) -> dict:
+    return _post("/effect", {"run": cfg.run_id, "turn": turn, "call": call, "args": args, "key": key})
+
+
 def tool_step(cfg: RunConfig, turn: int, call: int, tool_call: dict, native: str | None = None) -> dict:
     """Execute one tool call against the external service."""
     crashpoint(cfg, "tool_before", turn, call)
+    if cfg.key_strategy == "intent_log":
+        from .intentlog import IntentLog
+
+        def send(key: str, args: dict) -> dict:
+            out = _send(cfg, turn, call, args, key)
+            # Dying here leaves an intent with no recorded result.
+            crashpoint(cfg, "tool_after", turn, call)
+            return out
+
+        args, out = IntentLog(INTENT_DB).guarded(cfg.run_id, turn, call, tool_call["tool"], tool_call["args"], send)
+        return {"turn": turn, "call": call, "args": args, "receipt": out["receipt"]}
     key = idempotency_key(cfg, turn, call, tool_call, native)
-    out = _post(
-        "/effect",
-        {"run": cfg.run_id, "turn": turn, "call": call, "args": tool_call["args"], "key": key},
-    )
+    out = _send(cfg, turn, call, tool_call["args"], key)
     crashpoint(cfg, "tool_after", turn, call)
     return {"turn": turn, "call": call, "args": tool_call["args"], "receipt": out["receipt"]}
 

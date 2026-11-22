@@ -130,3 +130,82 @@ def test_http_roundtrip(monkeypatch):
     assert first["receipt"] == again["receipt"]
     assert len(control.state("t").applied) == 1
     control.shutdown()
+
+
+# -- intent log (needs the Postgres from docker-compose.yml) -----------------
+
+import uuid
+
+import pytest
+
+from killpoint.agent import INTENT_DB
+from killpoint.intentlog import IntentLog
+
+
+@pytest.fixture
+def log():
+    import psycopg
+
+    try:
+        intent_log = IntentLog(INTENT_DB)
+        intent_log.setup()
+    except psycopg.OperationalError:
+        pytest.skip("Postgres is not running")
+    return intent_log
+
+
+def test_intent_log_sends_once_and_replays_result(log):
+    run = uuid.uuid4().hex
+    sent = []
+
+    def send(key, args):
+        sent.append((key, args))
+        return {"receipt": len(sent)}
+
+    first = log.guarded(run, 1, 1, "charge", {"memo": "a"}, send)
+    again = log.guarded(run, 1, 1, "charge", {"memo": "b"}, send)
+    assert first == again == ({"memo": "a"}, {"receipt": 1})
+    assert len(sent) == 1
+
+
+def test_intent_log_retry_after_crash_reuses_key_and_first_args(log):
+    run = uuid.uuid4().hex
+    sent = []
+
+    def crashing_send(key, args):
+        sent.append((key, args))
+        raise RuntimeError("worker died after the service applied the effect")
+
+    with pytest.raises(RuntimeError):
+        log.guarded(run, 2, 1, "charge", {"memo": "first phrasing"}, crashing_send)
+
+    def send(key, args):
+        sent.append((key, args))
+        return {"receipt": 7}
+
+    args, result = log.guarded(run, 2, 1, "charge", {"memo": "second phrasing"}, send)
+    assert args == {"memo": "first phrasing"} and result == {"receipt": 7}
+    assert sent[0] == sent[1]
+
+
+def test_intent_log_lookup_replaces_resend(log):
+    run = uuid.uuid4().hex
+
+    def crashing_send(key, args):
+        raise RuntimeError("died")
+
+    with pytest.raises(RuntimeError):
+        log.guarded(run, 1, 1, "charge", {}, crashing_send)
+
+    def must_not_send(key, args):
+        raise AssertionError("resent although lookup found the effect")
+
+    _, result = log.guarded(run, 1, 1, "charge", {}, must_not_send, lookup=lambda key: {"receipt": 3})
+    assert result == {"receipt": 3}
+
+
+def test_intent_log_calls_are_independent(log):
+    run = uuid.uuid4().hex
+    a = log.guarded(run, 1, 1, "charge", {"n": 1}, lambda k, a: {"receipt": k})
+    b = log.guarded(run, 1, 2, "charge", {"n": 2}, lambda k, a: {"receipt": k})
+    assert a[1] != b[1]
