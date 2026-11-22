@@ -1,0 +1,27 @@
+# Backing services for the runtimes under test. Workers run on the host so the
+# harness can SIGKILL them; only the servers live in containers.
+name: killpoint
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: killpoint
+    command: ["postgres", "-c", "max_connections=300"]
+    ports: ["127.0.0.1:54329:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  temporal:
+    image: temporalio/temporal:latest
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--headless"]
+    ports: ["127.0.0.1:17233:7233"]
+
+  restate:
+    image: docker.restate.dev/restatedev/restate:latest
+    ports:
+      - "127.0.0.1:18080:8080"   # ingress
+      - "127.0.0.1:19070:9070"   # admin
+    extra_hosts: ["host.docker.internal:host-gateway"]

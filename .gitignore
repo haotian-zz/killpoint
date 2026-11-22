@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+results/smoke_*
+results/*.log
+.pytest_cache/
+scratch/
