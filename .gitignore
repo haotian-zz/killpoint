@@ -5,3 +5,4 @@ results/smoke_*
 results/*.log
 .pytest_cache/
 scratch/
+results/full_*
