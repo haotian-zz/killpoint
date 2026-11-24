@@ -175,6 +175,17 @@ It depends on the external service honoring idempotency keys. For a service that
 - Temporal ran with its in-memory development server. The activity start-to-close timeout was set to 5 seconds and the retry interval to 200 ms to keep runs short. Neither changes which steps are retried.
 - Workers run one at a time per agent run. Concurrent workers competing for the same run are not tested.
 
+## Related work
+
+Other projects kill these runtimes and count effects in an outside ledger.
+
+- [crashpoint](https://github.com/mstevens843/crashpoint) crashes LangGraph, Temporal, DBOS and others at named barriers on a single-step fixture. Its grades are close to the ones used here, and its two-phase arm fixes a call's identity before the model is asked, which is the idea behind the intent log.
+- [drydock](https://github.com/keshav9926/drydock) ships a crash harness with its own runtime and runs it against the same four engines.
+- Paolo Perrone's [comparison of Inngest, Temporal, DBOS and LangGraph](https://theaiengineer.substack.com/p/inngest-vs-temporal-vs-dbos-vs-langgraph) counts repeated steps after a mid-run kill.
+- [langgraph#8039](https://github.com/langchain-ai/langgraph/issues/8039) is an open issue about write ordering under `durability="sync"`. The task result window above may be the same problem seen through the functional API and Postgres. I have not confirmed that.
+
+I did not find the following elsewhere: the step granularity axis, every key strategy run on each runtime through its native SDK, and the `get_state().next` behavior.
+
 ## Running it
 
 Requirements: Docker, Python 3.12, [uv](https://docs.astral.sh/uv/).
@@ -200,3 +211,7 @@ uv run killpoint report results/runs.jsonl     # tables
 Write `runtimes/<name>_rt.py` with a `run(cfg)` function that starts the agent run or attaches to it if it already exists, waits for it to finish, and calls `agent.report_done`. Wrap `agent.llm_step`, `agent.tool_step`, `agent.batch_step` and `agent.turn_step` in the runtime's durable step primitive. Then add the name to `RUNTIMES` in `spec.py` and to the dispatch in `worker.py`.
 
 A worker must only ever execute its own run. The harness runs many agent runs at once and kills their workers independently, so a worker that picks up another run's work takes that run down when it dies. The adapters get this isolation from a task queue per run (Temporal), an application version per run (DBOS), a service per run (Restate) and a thread per run (LangGraph). [findings/dbos-recovery-queue.md](findings/dbos-recovery-queue.md) describes what went wrong before the DBOS adapter had it.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).

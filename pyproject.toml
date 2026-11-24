@@ -1,7 +1,9 @@
 [project]
 name = "killpoint"
 version = "0.1.0"
-description = "Add your description here"
+description = "Kill an agent's worker at a chosen point on Temporal, DBOS, Restate and LangGraph, then count the side effects in an external ledger"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 readme = "README.md"
 authors = [
     { name = "haotian-zz", email = "44010427+haotian-zz@users.noreply.github.com" }

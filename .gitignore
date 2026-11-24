@@ -7,3 +7,4 @@ results/*.log
 scratch/
 results/full_*
 results/final_*
+docs/blog-draft.md
